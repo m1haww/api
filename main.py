@@ -45,6 +45,10 @@ api.add_resource(SentAnalysis, '/')
 def health_check():
     return jsonify({"status": "healthy", "service": "sentiment-analysis-api"}), 200
 
+@app.route('/test')
+def test():
+    return jsonify({"message": "hello world"}), 200
+
 @app.route('/analyze-and-call', methods=['POST'])
 def analyze_and_call():
     try:
