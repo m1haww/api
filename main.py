@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, Response
 from flask_restful import Api
 from flask_cors import CORS
-from twilio.twiml.voice_response import VoiceResponse, Gather, Record, Start, Dial
+from twilio.twiml.voice_response import VoiceResponse, Dial
 
 HOST = "https://api-57018476417.europe-west1.run.app"
 
@@ -21,22 +21,8 @@ def answer():
     response = VoiceResponse()
     
     response.say("Mihai tu o sa ai padrugi tare multe si bani multi.")
-    
-    # Gather input from the caller
-    gather = Gather(
-        action="/process-gather",
-        method="POST",
-        input="speech dtmf",
-        timeout=5,
-        speech_timeout="auto",
-        num_digits=1
-    )
-    gather.say("Press 1 for sales, 2 for support, or say your request.")
-    response.append(gather)
-    
-    # If no input received
-    response.say("We didn't receive any input. Goodbye!")
-    response.hangup()
+
+    response.record()
 
     return Response(str(response), mimetype='text/xml')
 
