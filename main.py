@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, Response
 from flask_restful import Api
 from flask_cors import CORS
-from twilio.twiml.voice_response import VoiceResponse, Gather, Record
+from twilio.twiml.voice_response import VoiceResponse, Gather, Record, Start, Dial
 
 HOST = "https://api-57018476417.europe-west1.run.app"
 
@@ -17,17 +17,12 @@ def test():
 
 @app.route("/answer", methods=["GET", "POST"])
 def answer():
-    """Handle incoming calls with TwiML response including recording."""
+    """Handle incoming calls with gather and recording options."""
     response = VoiceResponse()
     
-    # Start recording the entire call in the background
-    response.start_recording(
-        recording_status_callback="/recording-status",
-        recording_status_callback_method="POST",
-        recording_status_callback_event="completed"
-    )
+    response.say("Mihai tu o sa ai padrugi tare multe si bani multi.")
     
-    # Add a gather to collect input while call is being recorded
+    # Gather input from the caller
     gather = Gather(
         action="/process-gather",
         method="POST",
@@ -36,13 +31,13 @@ def answer():
         speech_timeout="auto",
         num_digits=1
     )
-    gather.say("Welcome to our service. Press 1 for sales, 2 for support, or say your request.")
+    gather.say("Press 1 for sales, 2 for support, or say your request.")
     response.append(gather)
     
     # If no input received
     response.say("We didn't receive any input. Goodbye!")
     response.hangup()
-    
+
     return Response(str(response), mimetype='text/xml')
 
 @app.route("/handle-recording", methods=["POST"])
@@ -71,20 +66,42 @@ def process_gather():
     
     if digits:
         if digits == '1':
-            response.say("Connecting you to sales.")
-            # You can add dial functionality here
+            response.say("Connecting you to sales. This call will be recorded.")
+            # Dial with recording enabled
+            dial = Dial(
+                record="record-from-answer-dual",  # Records both sides
+                recording_status_callback="/recording-status",
+                recording_status_callback_method="POST"
+            )
+            dial.number("+1234567890")  # Replace with actual sales number
+            response.append(dial)
         elif digits == '2':
-            response.say("Connecting you to support.")
-            # You can add dial functionality here
+            response.say("Connecting you to support. This call will be recorded.")
+            # Dial with recording enabled
+            dial = Dial(
+                record="record-from-answer-dual",  # Records both sides
+                recording_status_callback="/recording-status",
+                recording_status_callback_method="POST"
+            )
+            dial.number("+1234567890")  # Replace with actual support number
+            response.append(dial)
         else:
             response.say("Invalid option.")
+            response.redirect("/answer")  # Go back to main menu
     elif speech_result:
-        response.say(f"You said: {speech_result}")
-        # Process speech input here
+        response.say(f"You said: {speech_result}. Let me record your message.")
+        # Record the caller's message
+        response.record(
+            action="/handle-recording",
+            method="POST",
+            max_length=300,  # 5 minutes max
+            recording_status_callback="/recording-status",
+            recording_status_callback_method="POST",
+            trim="trim-silence"
+        )
     else:
         response.say("No input received.")
-    
-    response.hangup()
+        response.hangup()
     
     return Response(str(response), mimetype='text/xml')
 
