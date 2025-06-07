@@ -1,6 +1,7 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask_restful import Api
 from flask_cors import CORS
+from twilio.twiml.voice_response import VoiceResponse, Gather, Record
 
 HOST = "https://api-57018476417.europe-west1.run.app"
 
@@ -13,6 +14,83 @@ output = {}
 @app.route('/test')
 def test():
     return jsonify({"message": "hello world"}), 200
+
+@app.route("/answer", methods=["GET", "POST"])
+def answer():
+    """Handle incoming calls with TwiML response including recording."""
+    response = VoiceResponse()
+    
+    # Start recording the call
+    response.record(
+        action="/handle-recording",
+        method="POST",
+        recording_status_callback="/recording-status",
+        recording_status_callback_method="POST",
+        recording_status_callback_event="completed",
+        trim="trim-silence",
+        timeout=10,
+        finish_on_key="#"
+    )
+    
+    # Add a gather to collect input while recording
+    gather = Gather(
+        action="/process-gather",
+        method="POST",
+        input="speech dtmf",
+        timeout=5,
+        speech_timeout="auto",
+        num_digits=1
+    )
+    gather.say("Welcome to our service. Press 1 for sales, 2 for support, or say your request.")
+    response.append(gather)
+    
+    # If no input received
+    response.say("We didn't receive any input. Goodbye!")
+    
+    return Response(str(response), mimetype='text/xml')
+
+@app.route("/handle-recording", methods=["POST"])
+def handle_recording():
+    """Handle the recording action callback."""
+    response = VoiceResponse()
+    
+    # Get recording details from the request
+    recording_url = request.values.get('RecordingUrl')
+    recording_duration = request.values.get('RecordingDuration')
+    
+    response.say("Thank you for your recording.")
+    response.hangup()
+    
+    return Response(str(response), mimetype='text/xml')
+
+@app.route("/process-gather", methods=["POST"])
+def process_gather():
+    """Process gathered input from caller."""
+    response = VoiceResponse()
+    
+    # Get the user's input
+    digits = request.values.get('Digits')
+    speech_result = request.values.get('SpeechResult')
+    confidence = request.values.get('Confidence')
+    
+    if digits:
+        if digits == '1':
+            response.say("Connecting you to sales.")
+            # You can add dial functionality here
+        elif digits == '2':
+            response.say("Connecting you to support.")
+            # You can add dial functionality here
+        else:
+            response.say("Invalid option.")
+    elif speech_result:
+        response.say(f"You said: {speech_result}")
+        # Process speech input here
+    else:
+        response.say("No input received.")
+    
+    response.hangup()
+    
+    return Response(str(response), mimetype='text/xml')
 
 
 def save_recording_to_db(call_sid, recording_sid, recording_url):
