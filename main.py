@@ -20,19 +20,14 @@ def answer():
     """Handle incoming calls with TwiML response including recording."""
     response = VoiceResponse()
     
-    # Start recording the call
-    response.record(
-        action="/handle-recording",
-        method="POST",
+    # Start recording the entire call in the background
+    response.start_recording(
         recording_status_callback="/recording-status",
         recording_status_callback_method="POST",
-        recording_status_callback_event="completed",
-        trim="trim-silence",
-        timeout=10,
-        finish_on_key="#"
+        recording_status_callback_event="completed"
     )
     
-    # Add a gather to collect input while recording
+    # Add a gather to collect input while call is being recorded
     gather = Gather(
         action="/process-gather",
         method="POST",
@@ -46,6 +41,7 @@ def answer():
     
     # If no input received
     response.say("We didn't receive any input. Goodbye!")
+    response.hangup()
     
     return Response(str(response), mimetype='text/xml')
 
