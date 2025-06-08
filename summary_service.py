@@ -1,17 +1,10 @@
-import requests
+from g4f.client import Client
 import logging
-import os
 
 class SummaryService:
     def __init__(self):
+        self.client = Client()
         self.logger = logging.getLogger(__name__)
-        # Try to detect if we're running in Docker or locally
-        default_url = 'http://g4f:1337/v1' if os.path.exists('/.dockerenv') else 'http://localhost:1337/v1'
-        self.api_url = os.environ.get('G4F_API_URL', default_url)
-        self.headers = {
-            'Content-Type': 'application/json'
-        }
-        self.logger.info(f"Using G4F API URL: {self.api_url}")
 
     def get_summary(self, call_transcribe):
         if not call_transcribe or not call_transcribe.strip():
@@ -36,32 +29,18 @@ CALL TRANSCRIPTION:
 Please provide a structured, professional summary:"""
 
         try:
-            response = requests.post(
-                f"{self.api_url}/chat/completions",
-                headers=self.headers,
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": "You are a professional call summarization assistant for business professionals."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.7
-                },
-                timeout=30
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a professional call summarization assistant for business professionals."},
+                    {"role": "user", "content": prompt}
+                ],
+                web_search=False
             )
-            
-            response.raise_for_status()
-            data = response.json()
-            
-            if 'choices' in data and len(data['choices']) > 0:
-                content = data['choices'][0]['message']['content']
-                return content
-            else:
-                return self._generate_fallback_summary(call_transcribe)
+
+            content = response.choices[0].message.content
+            return content
         
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"HTTP error generating summary: {str(e)}")
-            return self._generate_fallback_summary(call_transcribe)
         except Exception as e:
             self.logger.error(f"Error generating summary: {str(e)}")
             return self._generate_fallback_summary(call_transcribe)
@@ -98,31 +77,21 @@ CALL TRANSCRIPTION (first 500 characters):
 Provide only the title, nothing else:"""
 
         try:
-            response = requests.post(
-                f"{self.api_url}/chat/completions",
-                headers=self.headers,
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": "You are a professional assistant that creates concise titles for business calls."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.3
-                },
-                timeout=30
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a professional assistant that creates concise titles for business calls."},
+                    {"role": "user", "content": prompt}
+                ],
+                web_search=False,
+                temperature=0.3
             )
-            
-            response.raise_for_status()
-            data = response.json()
-            
-            if 'choices' in data and len(data['choices']) > 0:
-                title = data['choices'][0]['message']['content'].strip()
-                title = title.strip('"\'')
-                if len(title) > 100:
-                    title = title[:97] + "..."
-                return title
-            else:
-                raise Exception("No content in response")
+
+            title = response.choices[0].message.content.strip()
+            title = title.strip('"\'')
+            if len(title) > 100:
+                title = title[:97] + "..."
+            return title
         
         except Exception as e:
             self.logger.error(f"Error generating title: {str(e)}")

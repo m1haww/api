@@ -1,17 +1,6 @@
 version: '3.8'
 
 services:
-  g4f:
-    image: hlohaus789/g4f:latest-slim
-    command: /bin/sh -c 'rm -rf /app/g4f && pip install -U g4f[slim] && python -m g4f --debug'
-    ports:
-      - "1337:1337"
-    volumes:
-      - ./har_and_cookies:/app/har_and_cookies
-      - ./generated_media:/app/generated_media
-    shm_size: '2g'
-    user: "1000:1000"
-
   sentiment-api:
     build: .
     ports:
@@ -22,6 +11,3 @@ services:
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
-      - G4F_API_URL=http://g4f:1337/v1
-    depends_on:
-      - g4f
