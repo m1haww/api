@@ -86,11 +86,11 @@ def transcribe_complete():
             try:
                 summary_service = SummaryService()
 
-                call.summary = summary_service.get_summary(transcribe_text)
-                print(f"Summary generated for call UUID: {call_uuid}")
-
-                call.title = summary_service.get_title(transcribe_text)
-                print(f"Title generated for call UUID: {call_uuid}")
+                # call.summary = summary_service.get_summary(transcribe_text)
+                # print(f"Summary generated for call UUID: {call_uuid}")
+                #
+                # call.title = summary_service.get_title(transcribe_text)
+                # print(f"Title generated for call UUID: {call_uuid}")
 
             except Exception as e:
                 print(f"Error generating summary/title for call UUID {call_uuid}: {str(e)}")
@@ -102,6 +102,7 @@ def transcribe_complete():
         return jsonify("Transcribe was successfully saved."), 200
     except Exception as e:
         print(f"Error generating summary/title for call UUID {call_uuid}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/record-complete', methods=['POST'])
 def record_complete():
