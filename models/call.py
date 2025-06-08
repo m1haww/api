@@ -1,7 +1,7 @@
 from database import db
 
 class Call(db.Model):
-    __tablename__ = 'call'
+    __tablename__ = 'calls'
     id = db.Column(db.String(100), primary_key=True)
     from_phone = db.Column(db.String(100))
     call_date = db.Column(db.DateTime, nullable=False)

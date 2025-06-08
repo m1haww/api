@@ -124,19 +124,17 @@ def answer():
     db.session.add(call)
     db.session.commit()
 
-    return jsonify("Call was successfully saved."), 200
+    response = VoiceResponse()
 
-    # response = VoiceResponse()
-    #
-    # response.say("The recording has started.")
-    #
-    # response.record(
-    #     action=f"/record-complete?call-uuid={call_uuid}",
-    #     transcribe=True,
-    #     transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
-    # )
-    #
-    # return Response(str(response), mimetype='text/xml')
+    response.say("The recording has started.")
+
+    response.record(
+        action=f"/record-complete?call-uuid={call_uuid}",
+        transcribe=True,
+        transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
+    )
+
+    return Response(str(response), mimetype='text/xml')
 
 if __name__ == "__main__":
     with app.app_context():
