@@ -5,10 +5,13 @@ import os
 class SummaryService:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.api_url = os.environ.get('G4F_API_URL', 'http://g4f:1337/v1')
+        # Try to detect if we're running in Docker or locally
+        default_url = 'http://g4f:1337/v1' if os.path.exists('/.dockerenv') else 'http://localhost:1337/v1'
+        self.api_url = os.environ.get('G4F_API_URL', default_url)
         self.headers = {
             'Content-Type': 'application/json'
         }
+        self.logger.info(f"Using G4F API URL: {self.api_url}")
 
     def get_summary(self, call_transcribe):
         if not call_transcribe or not call_transcribe.strip():
