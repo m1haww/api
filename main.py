@@ -184,6 +184,7 @@ def answer():
     response.say("The recording has started.")
 
     response.record(
+        max_length=5400,
         action=f"/record-complete?call-uuid={call_uuid}",
         transcribe=True,
         transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
