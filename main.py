@@ -48,6 +48,9 @@ def get_calls_for_user():
         calls_list.append({
             'id': call.id,
             'from_phone': call.from_phone,
+            'call_date': call.call_date.isoformat() if call.call_date else None,
+            'title': call.title,
+            'summary': call.summary,
             'recording_url': call.recording_url,
             'recording_duration': call.recording_duration,
             'recording_status': call.recording_status,
@@ -124,17 +127,19 @@ def answer():
     db.session.add(call)
     db.session.commit()
 
-    response = VoiceResponse()
+    # response = VoiceResponse()
 
-    response.say("The recording has started.")
+    return jsonify({"answer": "hello wrold"}), 200
 
-    response.record(
-        action=f"/record-complete?call-uuid={call_uuid}",
-        transcribe=True,
-        transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
-    )
-
-    return Response(str(response), mimetype='text/xml')
+    # response.say("The recording has started.")
+    #
+    # response.record(
+    #     action=f"/record-complete?call-uuid={call_uuid}",
+    #     transcribe=True,
+    #     transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
+    # )
+    #
+    # return Response(str(response), mimetype='text/xml')
 
 if __name__ == "__main__":
     with app.app_context():
