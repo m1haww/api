@@ -65,41 +65,43 @@ def get_calls_for_user():
 @app.route('/transcribe-complete', methods=['POST'])
 def transcribe_complete():
     call_uuid = request.args.get('call-uuid')
-    
-    if not call_uuid:
-        return jsonify({'error': 'call-uuid parameter is required'}), 400
+    try:
+        if not call_uuid:
+            return jsonify({'error': 'call-uuid parameter is required'}), 400
 
-    body = get_formated_body()
+        body = get_formated_body()
 
-    transcribe_text = body.get("TranscriptionText")
-    transcribe_status = body.get("TranscriptionStatus")
-    
-    call = db.session.query(Call).filter_by(id=call_uuid).first()
-    
-    if not call:
-        return jsonify({'error': 'Call not found'}), 404
-    
-    call.transcription_text = transcribe_text
-    call.transcription_status = transcribe_status
+        transcribe_text = body.get("TranscriptionText")
+        transcribe_status = body.get("TranscriptionStatus")
 
-    if transcribe_status == "completed" and transcribe_text:
-        try:
-            summary_service = SummaryService()
-            
-            call.summary = summary_service.get_summary(transcribe_text)
-            print(f"Summary generated for call UUID: {call_uuid}")
-            
-            call.title = summary_service.get_title(transcribe_text)
-            print(f"Title generated for call UUID: {call_uuid}")
-            
-        except Exception as e:
-            print(f"Error generating summary/title for call UUID {call_uuid}: {str(e)}")
-            call.summary = "Summary generation failed. Please review the transcription."
-            call.title = "Call Recording"
-    
-    db.session.commit()
+        call = db.session.query(Call).filter_by(id=call_uuid).first()
 
-    return jsonify("Transcribe was successfully saved."), 200
+        if not call:
+            return jsonify({'error': 'Call not found'}), 404
+
+        call.transcription_text = transcribe_text
+        call.transcription_status = transcribe_status
+
+        if transcribe_status == "completed" and transcribe_text:
+            try:
+                summary_service = SummaryService()
+
+                call.summary = summary_service.get_summary(transcribe_text)
+                print(f"Summary generated for call UUID: {call_uuid}")
+
+                call.title = summary_service.get_title(transcribe_text)
+                print(f"Title generated for call UUID: {call_uuid}")
+
+            except Exception as e:
+                print(f"Error generating summary/title for call UUID {call_uuid}: {str(e)}")
+                call.summary = "Summary generation failed. Please review the transcription."
+                call.title = "Call Recording"
+
+        db.session.commit()
+
+        return jsonify("Transcribe was successfully saved."), 200
+    except Exception as e:
+        print(f"Error generating summary/title for call UUID {call_uuid}: {str(e)}")
 
 @app.route('/record-complete', methods=['POST'])
 def record_complete():
@@ -184,8 +186,8 @@ def answer():
     response.record(
         max_length=5400,
         action=f"/record-complete?call-uuid={call_uuid}",
-        # transcribe=True,
-        # transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
+        transcribe=True,
+        transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
     )
 
     return Response(str(response), mimetype='text/xml')
