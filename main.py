@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from database import db
 from models.call import Call
+from summary_service import SummaryService
 
 HOST = "https://api-57018476417.europe-west1.run.app"
 CONNECTION_STRING = "postgresql://postgres:grIfnjXjgauPzVcBJzKadyYZdwIdmoDT@shinkansen.proxy.rlwy.net:12034/railway"
@@ -79,14 +80,23 @@ def transcribe_complete():
     
     call.transcription_text = transcribe_text
     call.transcription_status = transcribe_status
+
+    if transcribe_status == "completed" and transcribe_text:
+        try:
+            summary_service = SummaryService()
+            
+            call.summary = summary_service.get_summary(transcribe_text)
+            print(f"Summary generated for call UUID: {call_uuid}")
+            
+            call.title = summary_service.get_title(transcribe_text)
+            print(f"Title generated for call UUID: {call_uuid}")
+            
+        except Exception as e:
+            print(f"Error generating summary/title for call UUID {call_uuid}: {str(e)}")
+            call.summary = "Summary generation failed. Please review the transcription."
+            call.title = "Call Recording"
     
     db.session.commit()
-
-    if transcribe_status == "completed":
-        print(f"Transcription completed for call UUID: {call_uuid}")
-        print(f"Transcription text: {transcribe_text}")
-    else:
-        print(f"Transcription status not completed for call UUID: {call_uuid}")
 
     return jsonify("Transcribe was successfully saved."), 200
 
@@ -127,19 +137,17 @@ def answer():
     db.session.add(call)
     db.session.commit()
 
-    # response = VoiceResponse()
+    response = VoiceResponse()
 
-    return jsonify({"answer": "hello wrold"}), 200
+    response.say("The recording has started.")
 
-    # response.say("The recording has started.")
-    #
-    # response.record(
-    #     action=f"/record-complete?call-uuid={call_uuid}",
-    #     transcribe=True,
-    #     transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
-    # )
-    #
-    # return Response(str(response), mimetype='text/xml')
+    response.record(
+        action=f"/record-complete?call-uuid={call_uuid}",
+        transcribe=True,
+        transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
+    )
+
+    return Response(str(response), mimetype='text/xml')
 
 if __name__ == "__main__":
     with app.app_context():
