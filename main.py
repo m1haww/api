@@ -125,6 +125,47 @@ def record_complete():
 
     return jsonify("Recording successfully completed."), 200
 
+@app.route("/test-summary", methods=["GET", "POST"])
+def test_summary():
+    """Test endpoint to verify the summary service is working."""
+    sample_transcription = """
+    Hello, this is John from ABC Corporation. I'm calling regarding our quarterly meeting scheduled for next week.
+    
+    We need to discuss three main points:
+    First, the Q4 financial results which showed a 15% increase in revenue.
+    Second, the new marketing campaign launching in January.
+    Third, the upcoming merger with XYZ Company.
+    
+    I'll need you to prepare the financial reports by Thursday and send them to the board members.
+    Also, please schedule a follow-up meeting with the marketing team for Friday at 2 PM.
+    
+    Let me know if you have any questions. My direct line is 555-1234.
+    Thanks, and I'll see you at the meeting next Tuesday at 10 AM.
+    """
+    
+    try:
+        summary_service = SummaryService()
+        
+        # Generate summary
+        summary = summary_service.get_summary(sample_transcription)
+        
+        # Generate title
+        title = summary_service.get_title(sample_transcription)
+        
+        return jsonify({
+            'status': 'success',
+            'test_transcription': sample_transcription,
+            'generated_title': title,
+            'generated_summary': summary
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'message': 'Failed to generate summary. Check if g4f service is running.'
+        }), 500
+
 @app.route("/answer", methods=["GET", "POST"])
 def answer():
     """Handle incoming calls with gather and recording options."""
