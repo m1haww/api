@@ -121,7 +121,7 @@ def record_complete():
     call.recording_url = recording_url
     call.recording_duration = int(recording_length) if recording_length else None
     call.recording_status = 'completed'
-    
+
     db.session.commit()
 
     return jsonify("Recording successfully completed."), 200
@@ -147,10 +147,8 @@ def test_summary():
     try:
         summary_service = SummaryService()
         
-        # Generate summary
         summary = summary_service.get_summary(sample_transcription)
         
-        # Generate title
         title = summary_service.get_title(sample_transcription)
         
         return jsonify({
@@ -186,8 +184,8 @@ def answer():
     response.record(
         max_length=5400,
         action=f"/record-complete?call-uuid={call_uuid}",
-        transcribe=True,
-        transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
+        # transcribe=True,
+        # transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
     )
 
     return Response(str(response), mimetype='text/xml')
