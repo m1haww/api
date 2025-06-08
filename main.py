@@ -3,6 +3,7 @@ from flask_restful import Api
 from flask_cors import CORS
 from twilio.twiml.voice_response import VoiceResponse
 import uuid
+from datetime import datetime
 from database import db
 from models.call import Call
 
@@ -119,21 +120,23 @@ def answer():
     body = get_formated_body()
     user_phone = body.get('From')
 
-    call = Call(call_uuid, user_phone)
+    call = Call(call_uuid, user_phone, datetime.now())
     db.session.add(call)
     db.session.commit()
 
-    response = VoiceResponse()
+    return jsonify("Call was successfully saved."), 200
 
-    response.say("The recording has started.")
-
-    response.record(
-        action=f"/record-complete?call-uuid={call_uuid}",
-        transcribe=True,
-        transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
-    )
-
-    return Response(str(response), mimetype='text/xml')
+    # response = VoiceResponse()
+    #
+    # response.say("The recording has started.")
+    #
+    # response.record(
+    #     action=f"/record-complete?call-uuid={call_uuid}",
+    #     transcribe=True,
+    #     transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
+    # )
+    #
+    # return Response(str(response), mimetype='text/xml')
 
 if __name__ == "__main__":
     with app.app_context():
