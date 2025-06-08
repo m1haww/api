@@ -4,6 +4,7 @@ from flask_cors import CORS
 from twilio.twiml.voice_response import VoiceResponse
 import uuid
 import os
+import threading
 from datetime import datetime
 from database import db
 from models.call import Call
@@ -19,6 +20,39 @@ CORS(app, origins=[HOST])
 
 db.init_app(app)
 api = Api(app)
+
+def process_summary_and_title_background(call_uuid, transcribe_text):
+    """Background function to generate summary and title for a call."""
+    with app.app_context():
+        try:
+            print(f"Starting background processing for call UUID: {call_uuid}")
+            
+            call = db.session.query(Call).filter_by(id=call_uuid).first()
+            if not call:
+                print(f"Call not found for UUID: {call_uuid}")
+                return
+            
+            summary_service = SummaryService()
+            
+            call.summary = summary_service.get_summary(transcribe_text)
+            print(f"Summary generated for call UUID: {call_uuid}")
+            
+            call.title = summary_service.get_title(transcribe_text)
+            print(f"Title generated for call UUID: {call_uuid}")
+            
+            db.session.commit()
+            print(f"Background processing completed for call UUID: {call_uuid}")
+            
+        except Exception as e:
+            print(f"Error in background processing for call UUID {call_uuid}: {str(e)}")
+            try:
+                call = db.session.query(Call).filter_by(id=call_uuid).first()
+                if call:
+                    call.summary = "Summary generation failed. Please review the transcription."
+                    call.title = "Call Recording"
+                    db.session.commit()
+            except Exception as inner_e:
+                print(f"Failed to update call with error fallback: {str(inner_e)}")
 
 def get_formated_body():
     if request.is_json:
@@ -82,22 +116,16 @@ def transcribe_complete():
         call.transcription_text = transcribe_text
         call.transcription_status = transcribe_status
 
-        if transcribe_status == "completed" and transcribe_text:
-            try:
-                summary_service = SummaryService()
-
-                # call.summary = summary_service.get_summary(transcribe_text)
-                # print(f"Summary generated for call UUID: {call_uuid}")
-                #
-                # call.title = summary_service.get_title(transcribe_text)
-                # print(f"Title generated for call UUID: {call_uuid}")
-
-            except Exception as e:
-                print(f"Error generating summary/title for call UUID {call_uuid}: {str(e)}")
-                call.summary = "Summary generation failed. Please review the transcription."
-                call.title = "Call Recording"
-
         db.session.commit()
+
+        if transcribe_status == "completed" and transcribe_text:
+            background_thread = threading.Thread(
+                target=process_summary_and_title_background,
+                args=(call_uuid, transcribe_text)
+            )
+            background_thread.daemon = True
+            background_thread.start()
+            print(f"Started background processing for call UUID: {call_uuid}")
 
         return jsonify("Transcribe was successfully saved."), 200
     except Exception as e:
