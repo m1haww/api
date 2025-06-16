@@ -249,17 +249,15 @@ def answer():
 
     response.say("You are being connected. This call will be recorded.")
 
-    dial = Dial()
-    dial.conference(
-        f"call-{call_uuid}",
-        record="record-from-start",
-        beep="true",
-        end_conference_on_exit=True,
-        recording_status_callback=f"https://api-57018476417.europe-west1.run.app/record-complete?call-uuid={call_uuid}",
-        recording_status_callback_method="POST"
-    )
+    response.pause(length=15)
 
-    response.append(dial)
+    response.record(
+        play_beep=True,
+        max_length = 5400,
+        action = f"/record-complete?call-uuid={call_uuid}",
+        transcribe = True,
+        transcribe_callback = f"/transcribe-complete?call-uuid={call_uuid}",
+    )
 
     return Response(str(response), mimetype='text/xml')
 
