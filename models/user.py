@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from database import db
 import uuid
@@ -11,6 +11,7 @@ class User(db.Model):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     phone_number = Column(String, unique=True, nullable=False)
     fcm_token = Column(String, nullable=False)
+    push_notifications_enabled = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -19,6 +20,7 @@ class User(db.Model):
             'userId': str(self.id),
             'phoneNumber': self.phone_number,
             'fcmToken': self.fcm_token,
+            'pushNotificationsEnabled': self.push_notifications_enabled,
             'createdAt': self.created_at.isoformat() if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() if self.updated_at else None
         }

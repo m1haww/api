@@ -4,7 +4,10 @@
       "Bash(chmod:*)",
       "Bash(lsof:*)",
       "Bash(kill:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

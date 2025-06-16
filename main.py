@@ -139,6 +139,39 @@ def register_user():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/users/notifications', methods=['PUT'])
+def update_notification_settings():
+    try:
+        body = get_formated_body()
+        
+        user_id = body.get('userId')
+        push_notifications_enabled = body.get('pushNotificationsEnabled')
+        
+        if not user_id:
+            return jsonify({'error': 'userId is required'}), 400
+        
+        if push_notifications_enabled is None:
+            return jsonify({'error': 'pushNotificationsEnabled is required'}), 400
+        
+        user = db.session.query(User).filter_by(id=user_id).first()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        user.push_notifications_enabled = push_notifications_enabled
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'userId': str(user.id),
+            'pushNotificationsEnabled': user.push_notifications_enabled,
+            'message': 'Notification settings updated successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/transcribe-complete', methods=['POST'])
 def transcribe_complete():
     call_uuid = request.args.get('call-uuid')
