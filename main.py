@@ -8,6 +8,7 @@ import threading
 from datetime import datetime
 from database import db
 from models.call import Call
+from models.user import User
 from summary_service import SummaryService
 
 HOST = "https://api-57018476417.europe-west1.run.app"
@@ -95,6 +96,48 @@ def get_calls_for_user():
         })
 
     return jsonify(calls_list), 200
+
+@app.route('/api/users/register', methods=['POST'])
+def register_user():
+    try:
+        body = get_formated_body()
+        
+        phone_number = body.get('phoneNumber')
+        fcm_token = body.get('fcmToken')
+        
+        if not phone_number:
+            return jsonify({'error': 'phoneNumber is required'}), 400
+        
+        if not fcm_token:
+            return jsonify({'error': 'fcmToken is required'}), 400
+        
+        existing_user = db.session.query(User).filter_by(phone_number=phone_number).first()
+        
+        if existing_user:
+            existing_user.fcm_token = fcm_token
+            existing_user.updated_at = datetime.utcnow()
+            db.session.commit()
+            
+            return jsonify({
+                'userId': str(existing_user.id),
+                'message': 'User updated successfully'
+            }), 200
+        else:
+            new_user = User(
+                phone_number=phone_number,
+                fcm_token=fcm_token
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            
+            return jsonify({
+                'userId': str(new_user.id),
+                'message': 'User registered successfully'
+            }), 201
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/transcribe-complete', methods=['POST'])
 def transcribe_complete():
