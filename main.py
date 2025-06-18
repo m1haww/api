@@ -255,9 +255,8 @@ def answer():
         record="record-from-start",
         beep="true",
         end_conference_on_exit=True,
-        recording_status_callback=f"/record-complete?call-uuid={call_uuid}",
-        recording_status_callback_method="POST",
-        recording_status_callback_event=["completed"]
+        recording_status_callback=f"https://api-57018476417.europe-west1.run.app/record-complete?call-uuid={call_uuid}",
+        recording_status_callback_method="POST"
     )
 
     response.append(dial)
