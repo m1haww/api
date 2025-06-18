@@ -251,6 +251,8 @@ def answer():
 
     response.pause(length=15)
 
+    response.say("The recording has started.")
+
     response.record(
         play_beep=True,
         max_length = 5400,
