@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, Response
 from flask_restful import Api
 from flask_cors import CORS
-from twilio.twiml.voice_response import VoiceResponse
+from twilio.twiml.voice_response import VoiceResponse, Dial
 import uuid
 import os
 import threading
@@ -233,48 +233,9 @@ def record_complete():
 
     return jsonify("Recording successfully completed."), 200
 
-@app.route("/test-summary", methods=["GET", "POST"])
-def test_summary():
-    """Test endpoint to verify the summary service is working."""
-    sample_transcription = """
-    Hello, this is John from ABC Corporation. I'm calling regarding our quarterly meeting scheduled for next week.
-    
-    We need to discuss three main points:
-    First, the Q4 financial results which showed a 15% increase in revenue.
-    Second, the new marketing campaign launching in January.
-    Third, the upcoming merger with XYZ Company.
-    
-    I'll need you to prepare the financial reports by Thursday and send them to the board members.
-    Also, please schedule a follow-up meeting with the marketing team for Friday at 2 PM.
-    
-    Let me know if you have any questions. My direct line is 555-1234.
-    Thanks, and I'll see you at the meeting next Tuesday at 10 AM.
-    """
-    
-    try:
-        summary_service = SummaryService()
-        
-        summary = summary_service.get_summary(sample_transcription)
-        
-        title = summary_service.get_title(sample_transcription)
-        
-        return jsonify({
-            'status': 'success',
-            'test_transcription': sample_transcription,
-            'generated_title': title,
-            'generated_summary': summary
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'error': str(e),
-            'message': 'Failed to generate summary. Check if g4f service is running.'
-        }), 500
-
 @app.route("/answer", methods=["GET", "POST"])
 def answer():
-    """Handle incoming calls with gather and recording options."""
+    """Handle incoming call and connect to a conference with beep and recording."""
     call_uuid = str(uuid.uuid4())
 
     body = get_formated_body()
@@ -286,14 +247,20 @@ def answer():
 
     response = VoiceResponse()
 
-    response.say("The recording has started.")
+    response.say("You are being connected. This call will be recorded.")
 
-    response.record(
-        max_length=5400,
-        action=f"/record-complete?call-uuid={call_uuid}",
-        transcribe=True,
-        transcribe_callback=f"/transcribe-complete?call-uuid={call_uuid}",
+    dial = Dial()
+    dial.conference(
+        f"call-{call_uuid}",
+        record="record-from-start",
+        beep="true",
+        end_conference_on_exit=True,
+        recording_status_callback=f"{HOST}/record-complete?call-uuid={call_uuid}",
+        recording_status_callback_method="POST",
+        recording_status_callback_event=["completed"]
     )
+
+    response.append(dial)
 
     return Response(str(response), mimetype='text/xml')
 
