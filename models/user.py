@@ -10,6 +10,7 @@ class User(db.Model):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     phone_number = Column(String, unique=True, nullable=False)
+    country_code = Column(String, nullable=True)
     fcm_token = Column(String, nullable=False)
     push_notifications_enabled = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -19,6 +20,7 @@ class User(db.Model):
         return {
             'userId': str(self.id),
             'phoneNumber': self.phone_number,
+            'countryCode': self.country_code,
             'fcmToken': self.fcm_token,
             'pushNotificationsEnabled': self.push_notifications_enabled,
             'createdAt': self.created_at.isoformat() if self.created_at else None,

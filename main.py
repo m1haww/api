@@ -75,10 +75,17 @@ def get_formated_body():
 def get_calls_for_user():
     body = get_formated_body()
     user_phone = body.get('user_phone')
-    
-    if not user_phone:
-        return jsonify({'error': 'user_phone parameter is required'}), 400
+    user_id = body.get('user_id')
 
+    if not user_phone and not user_id:
+        return jsonify({'error': 'Either user_phone or user_id parameter is required'}), 400
+
+    if user_id:
+        user = db.session.query(User).filter_by(id=user_id).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        user_phone = user.phone_number
+    
     calls = db.session.query(Call).filter_by(from_phone=user_phone).all()
     calls_list = []
     for call in calls:
@@ -97,12 +104,50 @@ def get_calls_for_user():
 
     return jsonify(calls_list), 200
 
+@app.route('/delete_recording', methods=['POST'])
+def delete_recording():
+    try:
+        body = get_formated_body()
+        
+        recording_id = body.get('recording_id')
+        user_id = body.get('user_id')
+        
+        if not recording_id:
+            return jsonify({'error': 'recording_id is required'}), 400
+        
+        if not user_id:
+            return jsonify({'error': 'user_id is required'}), 400
+
+        user = db.session.query(User).filter_by(id=user_id).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        call = db.session.query(Call).filter_by(id=recording_id).first()
+        if not call:
+            return jsonify({'error': 'Recording not found'}), 404
+        
+        if call.from_phone != user.phone_number:
+            return jsonify({'error': 'Unauthorized: You do not own this recording'}), 403
+        
+        db.session.delete(call)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Recording deleted successfully',
+            'recording_id': recording_id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/users/register', methods=['POST'])
 def register_user():
     try:
         body = get_formated_body()
         
         phone_number = body.get('phoneNumber')
+        country_code = body.get('countryCode')
         fcm_token = body.get('fcmToken')
         
         if not phone_number:
@@ -115,7 +160,9 @@ def register_user():
         
         if existing_user:
             existing_user.fcm_token = fcm_token
-            existing_user.updated_at = datetime.utcnow()
+            if country_code:
+                existing_user.country_code = country_code
+            existing_user.updated_at = datetime.now()
             db.session.commit()
             
             return jsonify({
@@ -127,6 +174,8 @@ def register_user():
                 phone_number=phone_number,
                 fcm_token=fcm_token
             )
+            if country_code:
+                new_user.country_code = country_code
             db.session.add(new_user)
             db.session.commit()
             
@@ -135,6 +184,64 @@ def register_user():
                 'message': 'User registered successfully'
             }), 201
             
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/users/<user_id>', methods=['GET'])
+def get_user(user_id):
+    try:
+        user = db.session.query(User).filter_by(id=user_id).first()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        return jsonify({
+            'phoneNumber': user.phone_number,
+            'countryCode': user.country_code if user.country_code else '',
+            'notificationsEnabled': user.push_notifications_enabled
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/users/update-phone', methods=['PUT'])
+def update_user_phone():
+    try:
+        body = get_formated_body()
+        
+        user_id = body.get('userId')
+        phone_number = body.get('phoneNumber')
+        country_code = body.get('countryCode')
+        
+        if not user_id:
+            return jsonify({'error': 'userId is required'}), 400
+        
+        if not phone_number:
+            return jsonify({'error': 'phoneNumber is required'}), 400
+            
+        if not country_code:
+            return jsonify({'error': 'countryCode is required'}), 400
+        
+        user = db.session.query(User).filter_by(id=user_id).first()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        existing_phone = db.session.query(User).filter_by(phone_number=phone_number).first()
+        if existing_phone and str(existing_phone.id) != user_id:
+            return jsonify({'error': 'Phone number already in use'}), 409
+        
+        user.phone_number = phone_number
+        user.country_code = country_code
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Phone number updated successfully',
+            'userId': str(user.id)
+        }), 200
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
