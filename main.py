@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, Response
 from flask_restful import Api
 from flask_cors import CORS
-from twilio.twiml.voice_response import VoiceResponse, Dial
+from twilio.twiml.voice_response import VoiceResponse
 import uuid
 import os
 import threading
@@ -273,6 +273,32 @@ def update_notification_settings():
             'userId': str(user.id),
             'pushNotificationsEnabled': user.push_notifications_enabled,
             'message': 'Notification settings updated successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/delete_all_recordings', methods=['POST'])
+def delete_all_recordings():
+    try:
+        body = get_formated_body()
+        
+        user_id = body.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'user_id is required'}), 400
+        
+        user = db.session.query(User).filter_by(id=user_id).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        deleted_count = db.session.query(Call).filter_by(from_phone=user.phone_number).delete()
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Successfully deleted {deleted_count} recordings',
+            'deleted_count': deleted_count
         }), 200
         
     except Exception as e:
