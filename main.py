@@ -10,6 +10,7 @@ from database import db
 from models.call import Call
 from models.user import User
 from summary_service import SummaryService
+from push_notification_service import push_notification_service
 
 HOST = "https://api-57018476417.europe-west1.run.app"
 CONNECTION_STRING = "postgresql://postgres:grIfnjXjgauPzVcBJzKadyYZdwIdmoDT@shinkansen.proxy.rlwy.net:12034/railway"
@@ -335,6 +336,32 @@ def transcribe_complete():
             background_thread.daemon = True
             background_thread.start()
             print(f"Started background processing for call UUID: {call_uuid}")
+
+        user = db.session.query(User).filter_by(phone_number=call.from_phone).first()
+        if user and user.push_notifications_enabled and user.fcm_token:
+            call_data = {
+                'id': call.id,
+                'callDate': call.call_date.isoformat() if call.call_date else '',
+                'fromPhone': call.from_phone or '',
+                'toPhone': '',
+                'recordingDuration': call.recording_duration or 0,
+                'recordingStatus': call.recording_status or '',
+                'recordingUrl': call.recording_url or '',
+                'summary': call.summary or '',
+                'title': call.title or '',
+                'transcriptionStatus': call.transcription_status or 'pending',
+                'transcriptionText': call.transcription_text or ''
+            }
+
+            success = push_notification_service.send_recording_complete_notification(
+                user.fcm_token,
+                call_data
+            )
+
+            if success:
+                print(f"Recording complete notification sent to user {user.id} for call {call.id}")
+            else:
+                print(f"Failed to send recording complete notification to user {user.id}")
 
         return jsonify("Transcribe was successfully saved."), 200
     except Exception as e:
